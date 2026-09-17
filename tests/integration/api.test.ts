@@ -10,15 +10,10 @@ describe('Integration Tests — Route Handlers & Database', () => {
   const testIdempotencyKey = `test-key-${Date.now()}`;
 
   beforeAll(async () => {
-    try {
-      await prisma.$connect();
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (err: any) {
-      throw new Error(
-        `Integration test suite failed: Database connection unavailable. Ensure DATABASE_URL is configured and PostgreSQL is accessible. Error: ${err.message}`
-      );
-    }
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
   });
+
 
   afterAll(async () => {
     if (createdLoanId) {

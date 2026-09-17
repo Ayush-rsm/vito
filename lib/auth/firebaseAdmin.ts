@@ -86,7 +86,6 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
       }
     }
 
-
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       return handler(req, context, {
@@ -94,6 +93,7 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
         email: decodedToken.email,
       });
     } catch (err: any) {
+
       return NextResponse.json(
         {
           error: {
