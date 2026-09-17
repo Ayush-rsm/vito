@@ -40,7 +40,6 @@ interface LoanData {
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [mockUser, setMockUser] = useState(false);
 
   const [loanId, setLoanId] = useState(DEFAULT_LOAN_ID);
   const [loan, setLoan] = useState<LoanData | null>(null);
@@ -82,7 +81,7 @@ export default function HomePage() {
     if (user) {
       return await user.getIdToken();
     }
-    return 'mock-client-token'; // Fallback token for dev testing
+    throw new Error('User is not authenticated');
   };
 
   const fetchLoan = async (id: string, asOf?: string) => {
@@ -114,10 +113,10 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    if (user || mockUser) {
+    if (user) {
       fetchLoan(loanId, asOfDate);
     }
-  }, [user, mockUser, loanId, asOfDate]);
+  }, [user, loanId, asOfDate]);
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,7 +174,7 @@ export default function HomePage() {
     );
   }
 
-  const isAuthenticated = !!user || mockUser;
+  const isAuthenticated = !!user;
 
   return (
     <div className="container">
@@ -192,27 +191,19 @@ export default function HomePage() {
           {isAuthenticated ? (
             <>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                {user ? user.email : 'demo@vitto.money (Test User)'}
+                {user.email}
               </span>
               <button
                 className="btn btn-secondary"
-                onClick={() => {
-                  if (user) logOut();
-                  setMockUser(false);
-                }}
+                onClick={() => logOut()}
               >
                 Sign Out
               </button>
             </>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn" onClick={() => signInWithGoogle()}>
-                Sign In with Google
-              </button>
-              <button className="btn btn-secondary" onClick={() => setMockUser(true)}>
-                Sign In as Demo User
-              </button>
-            </div>
+            <button className="btn" onClick={() => signInWithGoogle()}>
+              Sign In with Google
+            </button>
           )}
         </div>
       </header>
@@ -221,10 +212,10 @@ export default function HomePage() {
         <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
           <h2 style={{ marginBottom: '1rem', color: '#ffffff' }}>Authentication Required</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-            Please sign in using Firebase Authentication or Demo User to access loan repayment schedules and record payments.
+            Please sign in using Firebase Authentication to access loan repayment schedules and record payments.
           </p>
-          <button className="btn" onClick={() => setMockUser(true)}>
-            Sign In to Continue
+          <button className="btn" onClick={() => signInWithGoogle()}>
+            Sign In with Google
           </button>
         </div>
       ) : (

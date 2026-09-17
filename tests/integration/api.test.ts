@@ -7,28 +7,26 @@ import { prisma } from '../../lib/prisma';
 
 describe('Integration Tests — Route Handlers & Database', () => {
   let createdLoanId: string;
-  let isDbAvailable = false;
   const testIdempotencyKey = `test-key-${Date.now()}`;
 
   beforeAll(async () => {
     try {
       await prisma.$connect();
       await prisma.$queryRaw`SELECT 1`;
-      isDbAvailable = true;
-    } catch {
-      isDbAvailable = false;
+    } catch (err: any) {
+      throw new Error(
+        `Integration test suite failed: Database connection unavailable. Ensure DATABASE_URL is configured and PostgreSQL is accessible. Error: ${err.message}`
+      );
     }
   });
 
   afterAll(async () => {
-    if (isDbAvailable && createdLoanId) {
+    if (createdLoanId) {
       try {
         await prisma.loan.deleteMany({ where: { id: createdLoanId } });
       } catch {}
     }
-    if (isDbAvailable) {
-      await prisma.$disconnect();
-    }
+    await prisma.$disconnect();
   });
 
   it('11. Auth failure: rejects GET loan request without Authorization header with 401', async () => {
@@ -66,12 +64,7 @@ describe('Integration Tests — Route Handlers & Database', () => {
     expect(json.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('9. Success path: POST /api/loans creates loan in real DB when DB is available', async () => {
-    if (!isDbAvailable) {
-      console.warn('Skipping live DB integration test — DATABASE_URL offline');
-      return;
-    }
-
+  it('9. Success path: POST /api/loans creates loan in real DB', async () => {
     const payload = {
       principal: 200000,
       annualRate: 18,
@@ -100,7 +93,7 @@ describe('Integration Tests — Route Handlers & Database', () => {
   });
 
   it('9b. Success path: GET /api/loans/[id] fetches loan and position', async () => {
-    if (!isDbAvailable || !createdLoanId) return;
+    expect(createdLoanId).toBeDefined();
 
     const req = new NextRequest(`http://localhost:3000/api/loans/${createdLoanId}`, {
       method: 'GET',
@@ -118,7 +111,7 @@ describe('Integration Tests — Route Handlers & Database', () => {
   });
 
   it('12. Success path & Idempotency: POST payment records payment, second call returns 200 replay', async () => {
-    if (!isDbAvailable || !createdLoanId) return;
+    expect(createdLoanId).toBeDefined();
 
     const paymentPayload = {
       amount: '9986.00',
@@ -161,8 +154,6 @@ describe('Integration Tests — Route Handlers & Database', () => {
   });
 
   it('10. Failure path: GET unknown loan ID returns 404 LOAN_NOT_FOUND', async () => {
-    if (!isDbAvailable) return;
-
     const unknownId = '00000000-0000-0000-0000-999999999999';
     const req = new NextRequest(`http://localhost:3000/api/loans/${unknownId}`, {
       method: 'GET',

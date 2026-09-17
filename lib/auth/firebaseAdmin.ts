@@ -65,8 +65,8 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
 
     const token = authHeader.substring(7).trim();
 
-    // Stub auth verification in test mode or with mock test tokens
-    if (process.env.NODE_ENV === 'test' || token === 'test-token' || token.startsWith('mock-')) {
+    // In test environment ONLY (process.env.NODE_ENV === 'test'), allow mock test tokens for automated integration tests
+    if (process.env.NODE_ENV === 'test') {
       if (token === 'invalid-token') {
         return NextResponse.json(
           {
@@ -78,11 +78,14 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
           { status: 401 }
         );
       }
-      return handler(req, context, {
-        uid: 'test-user-123',
-        email: 'test@vitto.money',
-      });
+      if (token === 'test-token' || token.startsWith('mock-')) {
+        return handler(req, context, {
+          uid: 'test-user-123',
+          email: 'test@vitto.money',
+        });
+      }
     }
+
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
