@@ -1,0 +1,69 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Loan {
+  id               String       @id @default(uuid()) @db.Uuid
+  principalPaise   BigInt       @map("principal_paise")
+  annualRateBps    Int          @map("annual_rate_bps")
+  tenureMonths     Int          @map("tenure_months")
+  disbursementDate DateTime     @map("disbursement_date") @db.Date
+  emiPaise         BigInt       @map("emi_paise")
+  excessPaise      BigInt       @default(0) @map("excess_paise")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  instalments      Instalment[]
+  payments         Payment[]
+
+  @@map("loans")
+}
+
+model Instalment {
+  id             String       @id @default(uuid()) @db.Uuid
+  loanId         String       @map("loan_id") @db.Uuid
+  seq            Int
+  dueDate        DateTime     @map("due_date") @db.Date
+  principalPaise BigInt       @map("principal_paise")
+  interestPaise  BigInt       @map("interest_paise")
+  totalDuePaise  BigInt       @map("total_due_paise")
+  paidPaise      BigInt       @default(0) @map("paid_paise")
+
+  loan           Loan         @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  allocations    Allocation[]
+
+  @@unique([loanId, seq])
+  @@map("instalments")
+}
+
+model Payment {
+  id             String       @id @default(uuid()) @db.Uuid
+  loanId         String       @map("loan_id") @db.Uuid
+  amountPaise    BigInt       @map("amount_paise")
+  paidOn         DateTime     @map("paid_on") @db.Date
+  idempotencyKey String       @map("idempotency_key")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  loan           Loan         @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  allocations    Allocation[]
+
+  @@unique([loanId, idempotencyKey])
+  @@map("payments")
+}
+
+model Allocation {
+  id             String     @id @default(uuid()) @db.Uuid
+  paymentId      String     @map("payment_id") @db.Uuid
+  instalmentId   String     @map("instalment_id") @db.Uuid
+  interestPaise  BigInt     @map("interest_paise")
+  principalPaise BigInt     @map("principal_paise")
+
+  payment        Payment    @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  instalment     Instalment @relation(fields: [instalmentId], references: [id], onDelete: Cascade)
+
+  @@map("allocations")
+}
